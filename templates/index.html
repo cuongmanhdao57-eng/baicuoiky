@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Traffic Monitor - Camera IP System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            --page-bg: #f3f6fb;
+            --ink: #17243a;
+            --muted: #64748b;
+        }
+
+        body {
+            background: var(--page-bg);
+            color: var(--ink);
+        }
+
+        .navbar {
+            min-height: 56px;
+        }
+
+        .navbar-brand {
+            white-space: normal;
+            line-height: 1.35;
+            font-size: 1rem;
+        }
+
+        .card {
+            border: 0;
+            border-radius: 12px;
+            box-shadow: 0 5px 18px rgba(24, 39, 75, 0.07);
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            font-weight: 650;
+            padding: 11px 15px;
+        }
+
+        .btn {
+            min-height: 44px;
+            padding: 0.6rem 1rem;
+            border-radius: 0.65rem;
+            font-weight: 650;
+            box-shadow: 0 2px 6px rgba(24, 39, 75, 0.12);
+            transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            filter: brightness(1.06);
+            box-shadow: 0 5px 12px rgba(24, 39, 75, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .btn:active:not(:disabled) {
+            box-shadow: 0 1px 3px rgba(24, 39, 75, 0.16);
+            transform: translateY(0);
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid rgba(13, 110, 253, 0.35);
+            outline-offset: 2px;
+        }
+
+        .btn:disabled {
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        #startButton,
+        #uploadButton,
+        #downloadButton,
+        #saveIncidentButton {
+            font-weight: 750;
+        }
+
+        #videoFile::file-selector-button {
+            min-height: 38px;
+            margin: -0.375rem 0.75rem -0.375rem -0.75rem;
+            padding: 0.5rem 1rem;
+            border: 0;
+            border-right: 1px solid #b6d4fe;
+            background: #e7f1ff;
+            color: #084298;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #videoFile::file-selector-button:hover {
+            background: #cfe2ff;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #101827;
+            overflow: hidden;
+        }
+
+        .video-feed {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-content: center;
+            gap: 8px;
+            padding: 24px;
+            color: #e2e8f0;
+            text-align: center;
+            background: rgba(16, 24, 39, 0.78);
+            pointer-events: none;
+        }
+
+        .video-placeholder[hidden] {
+            display: none;
+        }
+
+        .video-placeholder strong {
+            font-size: clamp(1rem, 3vw, 1.35rem);
+        }
+
+        .video-placeholder span {
+            color: #b6c2d2;
+        }
+
+        .status-badge {
+            font-size: 0.78rem;
+            letter-spacing: 0.02em;
+        }
+
+        .metric-card {
+            height: 100%;
+            padding: 9px 11px;
+            border: 1px solid #e8edf5;
+            border-radius: 10px;
+            background: #fff;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .metric-value {
+            margin-top: 4px;
+            font-size: clamp(1.3rem, 2vw, 1.7rem);
+            font-weight: 750;
+            line-height: 1.1;
+        }
+
+        .total-value {
+            font-size: clamp(1.8rem, 3vw, 2.4rem);
+        }
+
+        .assessment-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .assessment-item {
+            flex: 1 1 180px;
+            padding: 9px 10px;
+            border: 1px solid #e8edf5;
+            border-radius: 12px;
+            background: #fff;
+        }
+
+        .assessment-label {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .assessment-value {
+            font-size: 1.2rem;
+            font-weight: 750;
+        }
+
+        .assessment-detail {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .event-list {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .event-list:empty::after {
+            content: "Chưa có sự cố nào được ghi nhận.";
+            display: block;
+            padding: 14px 0;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .event-item + .event-item {
+            border-top: 1px solid #e8edf5;
+        }
+
+        .dashboard-details > summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .dashboard-details > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .dashboard-details > summary::after {
+            content: "+";
+            float: right;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+
+        .dashboard-details[open] > summary::after {
+            content: "−";
+        }
+
+        @media (min-width: 992px) {
+            .dashboard-layout {
+                display: grid !important;
+                grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+                grid-template-areas:
+                    "video source"
+                    "counts density"
+                    "stopped report"
+                    "incident incident"
+                    "chart chart"
+                    "upload upload";
+                gap: 0 1rem;
+                margin: 0;
+            }
+
+            .dashboard-layout > section,
+            .dashboard-layout > aside {
+                display: contents;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(1) {
+                grid-area: video;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(2) {
+                grid-area: counts;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(3) {
+                grid-area: density;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(4) {
+                grid-area: stopped;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(5) {
+                grid-area: incident;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(6) {
+                grid-area: chart;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(1) {
+                grid-area: source;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(2) {
+                grid-area: upload;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(3) {
+                grid-area: report;
+            }
+        }
+
+        .upload-progress-wrap {
+            display: none;
+        }
+
+        .upload-progress-wrap.is-visible {
+            display: block;
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 270px;
+        }
+
+        @media (max-width: 575.98px) {
+            .navbar {
+                padding-top: 12px;
+                padding-bottom: 12px;
+            }
+
+            .navbar-brand {
+                font-size: 0.92rem;
+            }
+
+            .container-fluid {
+                padding-left: 12px !important;
+                padding-right: 12px !important;
+            }
+
+            .card {
+                margin-bottom: 14px;
+            }
+
+            .card-header {
+                padding: 12px 14px;
+            }
+
+            .metric-card {
+                padding: 12px;
+            }
+
+            .chart-wrap {
+                height: 220px;
+            }
+        }
+
+        @media (max-width: 991.98px) {
+            .dashboard-layout {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-areas:
+                    "video"
+                    "source"
+                    "counts"
+                    "density"
+                    "stopped"
+                    "report"
+                    "upload"
+                    "incident"
+                    "chart";
+                gap: 0;
+                margin: 0;
+            }
+
+            .dashboard-layout > section,
+            .dashboard-layout > aside {
+                display: contents;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(1) {
+                grid-area: video;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(2) {
+                grid-area: counts;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(3) {
+                grid-area: density;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(4) {
+                grid-area: stopped;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(5) {
+                grid-area: incident;
+            }
+
+            .dashboard-layout > section[aria-label="Kết quả giám sát"] > .card:nth-child(6) {
+                grid-area: chart;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(1) {
+                grid-area: source;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(2) {
+                grid-area: upload;
+            }
+
+            .dashboard-layout > section[aria-label="Điều khiển và báo cáo"] > .card:nth-child(3) {
+                grid-area: report;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-dark mb-3">
+    <div class="container-fluid px-4">
+        <span class="navbar-brand mb-0 h1">🚦 HỆ THỐNG GIÁM SÁT VÀ PHÂN TÍCH LƯU LƯỢNG GIAO THÔNG</span>
+    </div>
+</nav>
+
+<main class="container-fluid px-4">
+    <div class="row gx-lg-4 dashboard-layout">
+        <section class="col-lg-8" aria-label="Kết quả giám sát">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center gap-2">
+                    <span>📺 Màn hình giám sát</span>
+                    <span id="system-status" class="badge rounded-pill bg-secondary status-badge" role="status" aria-live="polite">ĐANG DỪNG</span>
+                </div>
+                <div class="card-body p-1">
+                    <div class="video-container">
+                        <img src="{{ url_for('video_feed') }}" class="video-feed" id="videoStream" alt="Video giám sát giao thông">
+                        <div class="video-placeholder" id="videoPlaceholder">
+                            <strong id="videoPlaceholderTitle">Chưa có nguồn video</strong>
+                            <span id="videoPlaceholderDetail">Chọn webcam, camera RTSP hoặc tải video lên để bắt đầu.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🚗 Mật độ xe trong khung hình</div>
+                <div class="card-body">
+                    <div class="row g-2 g-md-3">
+                        <div class="col-6 col-md">
+                            <div class="metric-card">
+                                <div class="metric-label">Car</div>
+                                <div class="metric-value text-primary" id="count-2">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="metric-card">
+                                <div class="metric-label">Motorcycle</div>
+                                <div class="metric-value text-success" id="count-3">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="metric-card">
+                                <div class="metric-label">Bus</div>
+                                <div class="metric-value text-warning" id="count-5">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md">
+                            <div class="metric-card">
+                                <div class="metric-label">Truck</div>
+                                <div class="metric-value text-info" id="count-7">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🚦 Đánh giá lưu lượng giao thông</div>
+                <div class="card-body">
+                    <div class="assessment-panel" aria-live="polite">
+                        <div class="assessment-item">
+                            <span class="assessment-label">Mật độ hiện tại</span>
+                            <span class="assessment-value text-secondary" id="trafficDensity">Chưa có dữ liệu</span>
+                            <span class="assessment-detail">Vắng: 0–10 · Bình thường: 11–24 · Đông: từ 25 xe</span>
+                        </div>
+                        <div class="assessment-item">
+                            <span class="assessment-label">Xu hướng 10 giây</span>
+                            <span class="assessment-value text-secondary" id="trafficStability">Đang chờ dữ liệu</span>
+                            <span class="assessment-detail" id="trafficStabilityDetail">Cần đủ 10 giây dữ liệu để đánh giá ổn định.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">🅿️ Xe dừng / đỗ lâu</div>
+                <div class="card-body">
+                    <div class="assessment-item">
+                        <span class="assessment-label">Số xe đứng yên liên tục từ 60 giây</span>
+                        <span class="assessment-value text-secondary" id="stoppedVehicleCount">0 xe · Chưa có dữ liệu</span>
+                        <span class="assessment-detail" id="stoppedVehicleDetail">Ít: 1–2 xe · Nhiều: từ 3 xe.</span>
+                    </div>
+                    <div class="alert alert-warning mt-3 mb-0 py-2 small" id="stoppedVehicleAlert" hidden>
+                        Có xe dừng lâu. Hãy kiểm tra video; có thể là chờ đèn hoặc ùn tắc, không đủ căn cứ xác nhận tai nạn.
+                    </div>
+                    <p class="form-text mb-0 mt-2">Đếm toàn khung hình; xe xếp hàng/chờ đèn có thể được tính. Cần duy trì nhận diện liên tục đủ 60 giây.</p>
+                </div>
+            </div>
+
+            <details class="card dashboard-details">
+                <summary class="card-header">🚨 Nhật ký sự cố giao thông đã xác minh</summary>
+                <div class="card-body">
+                    <p class="small text-muted">1–2 bản ghi: ít · Từ 3 bản ghi: nhiều trong 30 ngày.</p>
+                    <form id="incidentForm">
+                        <div class="mb-2">
+                            <label for="incidentTime" class="form-label fw-semibold">Thời gian xảy ra</label>
+                            <input type="datetime-local" class="form-control" id="incidentTime" required>
+                        </div>
+                        <div class="mb-2">
+                            <label for="incidentDescription" class="form-label fw-semibold">Mô tả đã xác minh</label>
+                            <input type="text" class="form-control" id="incidentDescription" maxlength="200" placeholder="Ví dụ: Va chạm tại làn phải" required>
+                        </div>
+                        <button class="btn btn-primary w-100" type="submit" id="saveIncidentButton">Lưu sự cố đã xác minh</button>
+                        <div class="small mt-2" id="incidentFormMessage" role="status" aria-live="polite"></div>
+                    </form>
+                    <div class="event-list mt-3" id="recentIncidents" aria-live="polite"></div>
+                    <p class="form-text mb-0 mt-2">Không có bản ghi không đồng nghĩa là đoạn đường chưa từng có tai nạn. Nhật ký được lưu cục bộ trong ứng dụng.</p>
+                </div>
+            </details>
+
+            <details class="card dashboard-details">
+                <summary class="card-header">📊 Biểu đồ mật độ xe theo thời gian</summary>
+                <div class="card-body">
+                    <div class="chart-wrap">
+                        <canvas id="trafficChart" role="img" aria-label="Biểu đồ số lượng xe theo thời gian"></canvas>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <section class="col-lg-4" aria-label="Điều khiển và báo cáo">
+            <div class="card">
+                <div class="card-header bg-success text-white">📡 Kết nối camera</div>
+                <div class="card-body py-2 border-bottom d-flex justify-content-between align-items-center">
+                    <span class="metric-label">🚗 Tổng số xe</span>
+                    <strong class="metric-value total-value text-dark" id="currentCount">0</strong>
+                </div>
+                <div class="card-body">
+                    <label class="form-label fw-bold" for="sourceMode">Loại nguồn video</label>
+                    <select class="form-select mb-3" id="sourceMode">
+                        <option value="webcam">Webcam máy tính</option>
+                        <option value="rtsp">Camera IP / RTSP</option>
+                    </select>
+                    <div class="mb-3" id="rtspGroup" hidden>
+                        <label class="form-label fw-bold" for="sourceInput">Địa chỉ RTSP / HTTP</label>
+                        <input type="text" class="form-control" id="sourceInput" placeholder="rtsp://dia-chi-camera:554/..." autocomplete="url">
+                        <div class="form-text">
+                            Ví dụ Imou/Dahua: <code>rtsp://admin:mat-khau@IP:554/cam/realmonitor?channel=1&amp;subtype=1</code>
+                        </div>
+                    </div>
+                    <div class="d-grid gap-2 d-sm-flex">
+                        <button type="button" class="btn btn-success flex-fill" id="startButton">
+                            ▶ Bắt đầu giám sát
+                        </button>
+                        <button type="button" class="btn btn-danger flex-fill" id="stopButton" disabled>
+                            ⏹ Dừng
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body border-top py-2">
+                    <span class="assessment-label">🚨 Sự cố đã xác minh trong 30 ngày</span>
+                    <span class="assessment-value text-secondary" id="incidentSummary">Đang tải nhật ký...</span>
+                    <span class="assessment-detail">Chỉ tính các sự cố người dùng đã xác minh; không có dữ liệu không đồng nghĩa là không có tai nạn.</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-secondary text-white">📁 Phân tích video có sẵn</div>
+                <div class="card-body">
+                    <label class="form-label fw-bold" for="videoFile">Chọn video (MP4, AVI, MOV)</label>
+                    <input type="file" class="form-control" id="videoFile" accept=".mp4,.avi,.mov,video/*">
+                    <div class="form-text text-break mt-2" id="selectedFileName">Chưa chọn video</div>
+                    <div class="upload-progress-wrap mt-3" id="uploadProgressWrap">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span id="uploadProgressLabel">Đang tải video...</span>
+                            <span id="uploadProgressValue">0%</span>
+                        </div>
+                        <div class="progress" role="progressbar" aria-label="Tiến trình tải video" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="uploadProgressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="small mt-2" id="uploadMessage" role="status" aria-live="polite"></div>
+                    <button class="btn btn-primary w-100 mt-3" type="button" id="uploadButton">
+                        Tải video và phân tích
+                    </button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-warning text-dark">📑 Báo cáo dữ liệu</div>
+                <div class="card-body">
+                    <p class="small text-muted">Excel ghi theo từng giây: số xe từng loại, tổng số, mật độ, độ ổn định, số xe dừng lâu và số sự cố đã xác minh trong 30 ngày.</p>
+                    <a href="/download" class="btn btn-primary w-100" id="downloadButton">
+                        📥 Tải báo cáo Excel (.xlsx)
+                    </a>
+                    <small class="text-muted d-block text-center mt-2">Mỗi lần chạy sẽ tạo báo cáo mới.</small>
+                </div>
+            </div>
+        </section>
+    </div>
+</main>
+
+<script>
+    const classIds = [2, 3, 5, 7];
+    const densityLabels = {
+        sparse: { text: 'Vắng', color: 'text-success' },
+        normal: { text: 'Bình thường', color: 'text-primary' },
+        crowded: { text: 'Đông', color: 'text-danger' }
+    };
+    const stabilityLabels = {
+        stable: { text: 'Ổn định', color: 'text-success' },
+        changing: { text: 'Đang biến động', color: 'text-warning-emphasis' },
+        collecting: { text: 'Đang thu thập', color: 'text-secondary' }
+    };
+    const chartCanvas = document.getElementById('trafficChart');
+    const trafficChart = new Chart(chartCanvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Số lượng xe',
+                data: [],
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.14)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            scales: {
+                x: { ticks: { maxTicksLimit: 8, maxRotation: 0 } },
+                y: { beginAtZero: true, precision: 0 }
+            },
+            plugins: { legend: { display: false } },
+            animation: false
+        }
+    });
+    chartCanvas.closest('details').addEventListener('toggle', () => trafficChart.resize());
+
+    const statusDetails = {
+        stopped: { label: 'ĐANG DỪNG', badge: 'bg-secondary', title: 'Chưa có nguồn video', detail: 'Chọn webcam, camera RTSP hoặc tải video lên để bắt đầu.' },
+        connecting: { label: 'ĐANG KẾT NỐI', badge: 'bg-warning text-dark', title: 'Đang kết nối nguồn video...', detail: 'Đang chờ khung hình đầu tiên.' },
+        reconnecting: { label: 'ĐANG KẾT NỐI LẠI', badge: 'bg-warning text-dark', title: 'Mất kết nối camera', detail: 'Hệ thống đang thử kết nối lại.' },
+        running: { label: 'ĐANG PHÂN TÍCH', badge: 'bg-success', title: '', detail: '' },
+        ended: { label: 'VIDEO ĐÃ KẾT THÚC', badge: 'bg-secondary', title: 'Video đã phát hết', detail: 'Tải báo cáo Excel để xem kết quả phân tích.' },
+        error: { label: 'CÓ LỖI', badge: 'bg-danger', title: 'Không thể chạy nguồn video', detail: 'Kiểm tra lại nguồn video rồi thử lại.' }
+    };
+
+    let lastChartId = 0;
+    let localError = '';
+    let requestInProgress = false;
+    let currentState = 'stopped';
+    let currentStatusMessage = '';
+
+    function setStatus(state, message = '') {
+        currentState = state;
+        currentStatusMessage = message;
+        const details = statusDetails[state] || statusDetails.stopped;
+        const badge = document.getElementById('system-status');
+        badge.className = `badge rounded-pill status-badge ${details.badge}`;
+        badge.textContent = details.label;
+
+        const placeholder = document.getElementById('videoPlaceholder');
+        const isRunning = state === 'running';
+        placeholder.hidden = isRunning;
+        if (!isRunning) {
+            document.getElementById('videoPlaceholderTitle').textContent = message || details.title;
+            document.getElementById('videoPlaceholderDetail').textContent = details.detail;
+        }
+
+        document.getElementById('startButton').disabled = requestInProgress || ['connecting', 'reconnecting', 'running'].includes(state);
+        document.getElementById('stopButton').disabled = requestInProgress || !['connecting', 'reconnecting', 'running'].includes(state);
+        document.getElementById('uploadButton').disabled = requestInProgress || ['connecting', 'reconnecting', 'running'].includes(state);
+    }
+
+    function resetDashboard() {
+        document.getElementById('currentCount').textContent = '0';
+        classIds.forEach((classId) => {
+            document.getElementById(`count-${classId}`).textContent = '0';
+        });
+        updateAssessment({ density: null, stability: 'collecting', sample_count: 0 });
+        updateStoppedVehicles({ count: 0, category: 'none' }, 'stopped');
+        trafficChart.data.labels = [];
+        trafficChart.data.datasets[0].data = [];
+        trafficChart.update('none');
+        lastChartId = 0;
+    }
+
+    function reloadImage() {
+        const img = document.getElementById('videoStream');
+        img.src = `{{ url_for('video_feed') }}?t=${Date.now()}`;
+    }
+
+    function showError(message) {
+        localError = message;
+        setStatus('error', message);
+    }
+
+    function setRequestInProgress(isInProgress) {
+        requestInProgress = isInProgress;
+        setStatus(currentState, currentStatusMessage);
+        document.getElementById('sourceMode').disabled = isInProgress;
+        document.getElementById('sourceInput').disabled = isInProgress;
+        document.getElementById('videoFile').disabled = isInProgress;
+    }
+
+    async function startSystem() {
+        const mode = document.getElementById('sourceMode').value;
+        const source = mode === 'webcam' ? '0' : document.getElementById('sourceInput').value.trim();
+        if (mode === 'rtsp' && !source) {
+            showError('Vui lòng nhập địa chỉ camera RTSP.');
+            return;
+        }
+
+        localError = '';
+        resetDashboard();
+        setStatus('connecting');
+        setRequestInProgress(true);
+        const formData = new FormData();
+        formData.append('source', source);
+
+        try {
+            const response = await fetch('/start', { method: 'POST', body: formData });
+            const data = await response.json();
+            if (!response.ok || data.status !== 'ok') {
+                throw new Error(data.message || 'Không thể kết nối nguồn video.');
+            }
+            reloadImage();
+        } catch (error) {
+            showError(error.message || 'Lỗi kết nối máy chủ.');
+        } finally {
+            setRequestInProgress(false);
+        }
+    }
+
+    async function stopSystem() {
+        localError = '';
+        setRequestInProgress(true);
+        try {
+            const response = await fetch('/stop', { method: 'POST' });
+            const data = await response.json();
+            if (!response.ok || data.status !== 'ok') {
+                throw new Error(data.message || 'Không thể dừng hệ thống.');
+            }
+            resetDashboard();
+            setStatus('stopped');
+            reloadImage();
+        } catch (error) {
+            showError(error.message || 'Lỗi kết nối máy chủ.');
+        } finally {
+            setRequestInProgress(false);
+        }
+    }
+
+    function uploadFile() {
+        const fileInput = document.getElementById('videoFile');
+        const file = fileInput.files[0];
+        if (!file) {
+            const message = 'Vui lòng chọn file video trước.';
+            document.getElementById('uploadMessage').textContent = message;
+            document.getElementById('uploadMessage').className = 'small mt-2 text-danger';
+            showError(message);
+            return;
+        }
+
+        localError = '';
+        resetDashboard();
+        setStatus('connecting', 'Đang tải video lên...');
+        setRequestInProgress(true);
+        const progressWrap = document.getElementById('uploadProgressWrap');
+        const progressBar = document.getElementById('uploadProgressBar');
+        const progressLabel = document.getElementById('uploadProgressLabel');
+        const progressValue = document.getElementById('uploadProgressValue');
+        const uploadMessage = document.getElementById('uploadMessage');
+        progressWrap.classList.add('is-visible');
+        progressBar.classList.remove('bg-success');
+        progressBar.classList.add('progress-bar-animated');
+        progressBar.style.width = '0%';
+        progressValue.textContent = '0%';
+        progressLabel.textContent = 'Đang tải video...';
+        uploadMessage.textContent = 'Đang gửi video lên máy chủ. Video lớn có thể mất vài phút.';
+        uploadMessage.className = 'small mt-2 text-muted';
+
+        const formData = new FormData();
+        formData.append('file', file);
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload');
+        xhr.timeout = 15 * 60 * 1000;
+
+        xhr.upload.addEventListener('progress', (event) => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = `${percent}%`;
+            progressValue.textContent = `${percent}%`;
+            progressBar.parentElement.setAttribute('aria-valuenow', String(percent));
+            progressLabel.textContent = percent === 100
+                ? 'Đã gửi video · Đang chờ máy chủ mở file...'
+                : `Đang tải video lên... ${percent}%`;
+            uploadMessage.textContent = percent === 100
+                ? 'Đã gửi xong dữ liệu. Máy chủ đang kiểm tra và khởi tạo phân tích.'
+                : `Đã gửi ${(event.loaded / (1024 * 1024)).toFixed(1)} / ${(event.total / (1024 * 1024)).toFixed(1)} MB.`;
+        });
+
+        xhr.addEventListener('load', () => {
+            let data;
+            try {
+                data = JSON.parse(xhr.responseText);
+            } catch {
+                data = {};
+            }
+
+            if (xhr.status < 200 || xhr.status >= 300 || data.status !== 'ok') {
+                const message = data.message || `Máy chủ không thể nhận video (HTTP ${xhr.status}).`;
+                uploadMessage.textContent = message;
+                uploadMessage.className = 'small mt-2 text-danger';
+                progressLabel.textContent = 'Tải video thất bại';
+                showError(message);
+                setRequestInProgress(false);
+                return;
+            }
+
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-success');
+            progressBar.style.width = '100%';
+            progressValue.textContent = '100%';
+            progressBar.parentElement.setAttribute('aria-valuenow', '100');
+            progressLabel.textContent = 'Đã nhận video · Đang phân tích';
+            uploadMessage.textContent = 'Video đã được mở thành công. Đang bắt đầu nhận diện xe.';
+            uploadMessage.className = 'small mt-2 text-success';
+            setStatus('connecting');
+            reloadImage();
+            setRequestInProgress(false);
+        });
+
+        xhr.addEventListener('error', () => {
+            const message = 'Lỗi kết nối khi tải video. Kiểm tra máy chủ và thử lại.';
+            uploadMessage.textContent = message;
+            uploadMessage.className = 'small mt-2 text-danger';
+            progressLabel.textContent = 'Tải video thất bại';
+            showError(message);
+            setRequestInProgress(false);
+        });
+
+        xhr.addEventListener('abort', () => {
+            const message = 'Đã hủy tải video.';
+            uploadMessage.textContent = message;
+            uploadMessage.className = 'small mt-2 text-danger';
+            showError(message);
+            setRequestInProgress(false);
+        });
+
+        xhr.addEventListener('timeout', () => {
+            const message = 'Tải video quá thời gian chờ. Hãy thử lại với video nhỏ hơn hoặc kiểm tra máy chủ.';
+            uploadMessage.textContent = message;
+            uploadMessage.className = 'small mt-2 text-danger';
+            progressLabel.textContent = 'Tải video quá thời gian chờ';
+            showError(message);
+            setRequestInProgress(false);
+        });
+
+        xhr.send(formData);
+    }
+
+    function updateDashboard(data) {
+        document.getElementById('currentCount').textContent = data.count ?? 0;
+        classIds.forEach((classId) => {
+            document.getElementById(`count-${classId}`).textContent = data.class_counts?.[classId] ?? 0;
+        });
+        updateAssessment(data.assessment);
+        updateStoppedVehicles(data.stopped_vehicles, data.state);
+
+        const incoming = data.chart || [];
+        const latestId = incoming.length ? incoming[incoming.length - 1].id : 0;
+        let changed = false;
+        if (latestId < lastChartId) {
+            trafficChart.data.labels = [];
+            trafficChart.data.datasets[0].data = [];
+            lastChartId = 0;
+            changed = true;
+        }
+
+        incoming.forEach((point) => {
+            if (point.id <= lastChartId) return;
+            trafficChart.data.labels.push(point.time);
+            trafficChart.data.datasets[0].data.push(point.count);
+            lastChartId = point.id;
+            changed = true;
+        });
+
+        if (changed) {
+            while (trafficChart.data.labels.length > 50) {
+                trafficChart.data.labels.shift();
+                trafficChart.data.datasets[0].data.shift();
+            }
+            trafficChart.update('none');
+        }
+    }
+
+    function updateAssessment(assessment = {}) {
+        const densityElement = document.getElementById('trafficDensity');
+        const density = densityLabels[assessment.density];
+        densityElement.textContent = density ? density.text : 'Chưa có dữ liệu';
+        densityElement.className = `assessment-value ${density ? density.color : 'text-secondary'}`;
+
+        const stabilityElement = document.getElementById('trafficStability');
+        const stability = stabilityLabels[assessment.stability] || stabilityLabels.collecting;
+        stabilityElement.textContent = stability.text;
+        stabilityElement.className = `assessment-value ${stability.color}`;
+
+        const detail = assessment.stability === 'stable' || assessment.stability === 'changing'
+            ? `Biến động ${assessment.stability_range} xe trong 10 giây gần nhất (ngưỡng ổn định: không quá 3 xe).`
+            : 'Cần đủ 10 giây dữ liệu để đánh giá ổn định.';
+        document.getElementById('trafficStabilityDetail').textContent = detail;
+    }
+
+    function updateStoppedVehicles(info = {}, state = 'stopped') {
+        const count = info.count || 0;
+        const category = state === 'stopped'
+            ? 'Chưa có dữ liệu'
+            : state === 'connecting'
+                ? 'Đang thu thập'
+                : count === 0 ? 'Chưa phát hiện' : count < 3 ? 'Ít' : 'Nhiều';
+        document.getElementById('stoppedVehicleCount').textContent = `${count} xe · ${category}`;
+        document.getElementById('stoppedVehicleAlert').hidden = state !== 'running' || !info.review_recommended;
+    }
+
+    function formatIncidentSummary(summary) {
+        if (summary.category === 'no_data') return 'Chưa có dữ liệu xác minh';
+        if (summary.category === 'frequent') return `${summary.count_30_days} sự cố ghi nhận · Mức nhiều`;
+        return `${summary.count_30_days} sự cố ghi nhận · Mức ít`;
+    }
+
+    function renderIncidentSummary(summary) {
+        const element = document.getElementById('incidentSummary');
+        element.textContent = formatIncidentSummary(summary);
+        element.className = `assessment-value ${summary.category === 'frequent' ? 'text-danger' : summary.category === 'few' ? 'text-warning-emphasis' : 'text-secondary'}`;
+
+        const list = document.getElementById('recentIncidents');
+        list.replaceChildren();
+        summary.recent.forEach((incident) => {
+            const item = document.createElement('div');
+            item.className = 'event-item py-2';
+            const date = document.createElement('strong');
+            date.className = 'd-block small';
+            date.textContent = new Date(incident.time).toLocaleString('vi-VN');
+            const description = document.createElement('span');
+            description.className = 'small text-muted';
+            description.textContent = incident.description;
+            item.append(date, description);
+            list.append(item);
+        });
+    }
+
+    async function loadIncidentSummary() {
+        const response = await fetch('/incidents', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Không tải được nhật ký sự cố.');
+        renderIncidentSummary(await response.json());
+    }
+
+    async function saveIncident(event) {
+        event.preventDefault();
+        const button = document.getElementById('saveIncidentButton');
+        const message = document.getElementById('incidentFormMessage');
+        button.disabled = true;
+        message.textContent = 'Đang lưu...';
+        message.className = 'small mt-2 text-muted';
+        try {
+            const response = await fetch('/incidents', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    time: document.getElementById('incidentTime').value,
+                    description: document.getElementById('incidentDescription').value.trim()
+                })
+            });
+            const result = await response.json();
+            if (!response.ok || result.status !== 'ok') throw new Error(result.message || 'Không thể lưu sự cố.');
+            renderIncidentSummary(result.summary);
+            document.getElementById('incidentDescription').value = '';
+            message.textContent = 'Đã lưu sự cố vào nhật ký xác minh.';
+            message.className = 'small mt-2 text-success';
+        } catch (error) {
+            message.textContent = error.message || 'Lỗi khi lưu nhật ký.';
+            message.className = 'small mt-2 text-danger';
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    document.getElementById('sourceMode').addEventListener('change', (event) => {
+        const showRtsp = event.target.value === 'rtsp';
+        document.getElementById('rtspGroup').hidden = !showRtsp;
+        if (showRtsp) document.getElementById('sourceInput').focus();
+        clearLocalError();
+    });
+
+    document.getElementById('sourceInput').addEventListener('input', clearLocalError);
+
+    document.getElementById('videoFile').addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        document.getElementById('selectedFileName').textContent = file
+            ? `${file.name} · ${(file.size / (1024 * 1024)).toFixed(1)} MB`
+            : 'Chưa chọn video';
+        document.getElementById('uploadMessage').textContent = '';
+        clearLocalError();
+    });
+
+    document.getElementById('startButton').addEventListener('click', startSystem);
+    document.getElementById('stopButton').addEventListener('click', stopSystem);
+    document.getElementById('uploadButton').addEventListener('click', uploadFile);
+    document.getElementById('incidentForm').addEventListener('submit', saveIncident);
+    document.getElementById('videoStream').addEventListener('error', () => {
+        if (!localError) setStatus('connecting', 'Đang chờ luồng hình ảnh...');
+    });
+
+    function clearLocalError() {
+        if (!localError) return;
+        localError = '';
+        pollDashboard();
+    }
+
+    reloadImage();
+    const localDateTime = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    document.getElementById('incidentTime').value = localDateTime;
+    setStatus('stopped');
+    loadIncidentSummary().catch((error) => {
+        document.getElementById('incidentSummary').textContent = error.message;
+    });
+
+    async function pollDashboard() {
+        try {
+            const response = await fetch('/data', { cache: 'no-store' });
+            if (!response.ok) throw new Error('Không đọc được trạng thái hệ thống.');
+            const data = await response.json();
+            updateDashboard(data);
+            if (!localError) setStatus(data.state);
+        } catch (error) {
+            if (!localError) showError('Mất kết nối tới máy chủ giám sát.');
+        }
+    }
+
+    pollDashboard();
+    window.setInterval(pollDashboard, 1000);
+</script>
+
+</body>
+</html>
