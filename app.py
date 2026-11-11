@@ -9,20 +9,20 @@ import tempfile
 from datetime import datetime
 import queue
 
-from traffic_detection import (
+from traffic.traffic_detection import (
     DETECTION_CONFIDENCE,
     INFERENCE_SIZE,
     TRAFFIC_CLASSES,
     detect_vehicles,
 )
-from traffic_events import add_verified_incident, get_incident_summary
-from traffic_logic import (
+from traffic.traffic_events import add_verified_incident, get_incident_summary
+from traffic.traffic_logic import (
     EXCEL_CLASS_COLUMNS,
     STOPPED_VEHICLE_SECONDS,
     assess_traffic,
     update_vehicle_tracks,
 )
-from traffic_reports import init_excel_file, thread_excel_writer
+from traffic.traffic_reports import init_excel_file, thread_excel_writer
 
 print(">> Đang khởi tạo hệ thống (Camera IP & Video Offline)...")
 
@@ -30,13 +30,16 @@ print(">> Đang khởi tạo hệ thống (Camera IP & Video Offline)...")
 os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
 
 app = Flask(__name__)
-model = YOLO('yolov8n.pt')
 
 # --- THIẾT LẬP ---
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
-EXCEL_FILE_NAME = os.path.join(APP_DIR, "baocao_giao_thong.xlsx")
-INCIDENT_LOG_FILE = os.path.join(APP_DIR, "incident_log.csv")
+MODEL_FILE = os.path.join(APP_DIR, "models", "yolov8n.pt")
+DATA_DIR = os.path.join(APP_DIR, "data")
+EXCEL_FILE_NAME = os.path.join(DATA_DIR, "baocao_giao_thong.xlsx")
+INCIDENT_LOG_FILE = os.path.join(DATA_DIR, "incident_log.csv")
 EXCEL_SAVE_INTERVAL = 1
+
+model = YOLO(MODEL_FILE)
 
 # --- BIẾN TOÀN CỤC ---
 cap = None
@@ -466,6 +469,7 @@ def download():
     return "No Data", 404
 
 if __name__ == '__main__':
+    os.makedirs(DATA_DIR, exist_ok=True)
     init_excel_file(EXCEL_FILE_NAME)
     print(">> Đang khởi động trước bộ nhận diện...")
     model.predict(
